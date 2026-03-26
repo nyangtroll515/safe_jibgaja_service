@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeWalk - 안심 귀가 컴패니언</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-panel: #1e293b;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --primary: #3b82f6;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --premium: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: #000;
+            font-family: 'Pretendard', -apple-system, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            width: 100%; max-width: 400px; height: 100vh; max-height: 850px;
+            background-color: var(--bg-dark); color: var(--text-main);
+            position: relative; overflow: hidden;
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column;
+        }
+
+        .screen {
+            padding: 24px; height: 100%; box-sizing: border-box;
+            display: none; flex-direction: column;
+            animation: fadeIn 0.3s ease-in-out;
+            overflow-y: auto;
+        }
+        .screen.active { display: flex; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 { margin-top: 20px; font-size: 24px; font-weight: 800; }
+        .subtitle { color: var(--text-sub); margin-bottom: 20px; font-size: 14px; line-height: 1.5; }
+
+        /* 광고 & 프리미엄 UI */
+        .premium-banner {
+            background: var(--premium); color: white; padding: 16px; border-radius: 12px;
+            margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;
+            cursor: pointer; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+            transition: 0.2s; flex-shrink: 0;
+        }
+        .premium-banner:hover { transform: scale(1.02); }
+        
+        .ad-banner {
+            background-color: #0f172a; border: 1px dashed #475569; border-radius: 12px;
+            padding: 16px; text-align: center; margin-bottom: 20px;
+            display: flex; flex-direction: column; gap: 8px; flex-shrink: 0;
+            cursor: pointer;
+        }
+        
+        /* 모달 팝업 */
+        .modal-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            display: none; justify-content: center; align-items: center; z-index: 100;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.2s; }
+        .modal-content {
+            background: var(--bg-panel); padding: 24px; border-radius: 20px;
+            width: 100%; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .btn-skip-ad {
+            background: transparent; border: 1px solid var(--text-sub); color: var(--text-sub);
+            padding: 10px 20px; border-radius: 20px; margin-top: 20px; cursor: pointer;
+            font-size: 14px; transition: 0.2s;
+        }
+        .btn-skip-ad:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 공통 스타일 */
+        .input-field { background-color: var(--bg-panel); border: 1px solid #334155; color: white; padding: 16px; border-radius: 12px; margin-bottom: 12px; font-size: 16px; width: 100%; box-sizing: border-box; outline: none; }
+        .card { background-color: var(--bg-panel); border-radius: 16px; padding: 20px; margin-bottom: 16px; flex-shrink: 0;}
+        .persona-list { display: flex; flex-direction: column; gap: 10px; }
+        .persona-btn { background-color: var(--bg-dark); border: 1px solid #334155; color: white; padding: 14px; border-radius: 12px; text-align: left; cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between; align-items: center; }
+        .persona-btn.selected { border-color: var(--primary); background-color: rgba(59, 130, 246, 0.1); }
+        .tag { font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: bold; white-space: nowrap; }
+        .tag.normal { background-color: rgba(244, 114, 182, 0.15); color: #f9a8d4; }
+        .tag.threat { background-color: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+        .tag.emergency { background-color: rgba(59, 130, 246, 0.15); color: #93c5fd; }
+        button.primary-btn { background-color: var(--primary); color: white; border: none; padding: 16px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; width: 100%; }
+        
+        /* 통화 화면 */
+        .call-screen { text-align: center; justify-content: space-between; background: linear-gradient(180deg, #1e293b 0%, #020617 100%); }
+        .profile-pic { width: 110px; height: 110px; background-color: #334155; border-radius: 50%; margin: 20px auto 15px; display: flex; align-items: center; justify-content: center; font-size: 45px; }
+        .caller-name { font-size: 26px; font-weight: bold; margin-bottom: 6px; }
+        .call-time { color: var(--text-sub); font-size: 16px; margin-bottom: 20px; }
+        
+        .ai-captions { background-color: rgba(255,255,255,0.05); padding: 20px; border-radius: 16px; min-height: 150px; max-height: 200px; margin-bottom: 20px; text-align: left; font-size: 14px; line-height: 1.6; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; scroll-behavior: smooth; }
+        .caption-ai { color: #93c5fd; animation: fadeIn 0.4s; }
+        .caption-user { color: #ffffff; text-align: right; animation: fadeIn 0.4s; background-color: rgba(59, 130, 246, 0.2); padding: 8px 12px; border-radius: 12px; align-self: flex-end; max-width: 85%; }
+        
+        /* 컨트롤 버튼 상호작용 UI */
+        .call-controls-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; place-items: center; }
+        .control-item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .control-label { font-size: 12px; color: var(--text-sub); }
+        .control-btn {
+            width: 60px; height: 60px; border-radius: 50%; border: none;
+            font-size: 22px; color: white; cursor: pointer; transition: all 0.2s;
+            background-color: rgba(255,255,255,0.15); backdrop-filter: blur(5px);
+            display: flex; justify-content: center; align-items: center;
+        }
+        .control-btn.active-state { background-color: #ffffff; color: #1e293b; box-shadow: 0 0 15px rgba(255,255,255,0.3); }
+        .control-btn.recording { background-color: rgba(239, 68, 68, 0.2); border: 2px solid var(--danger); color: var(--danger); }
+        .control-btn.recording .rec-dot { background-color: var(--danger); animation: blink 1s infinite; }
+        
+        .rec-dot { width: 12px; height: 12px; border-radius: 50%; background-color: currentColor; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        
+        .btn-end { background-color: var(--danger); width: 64px; height: 64px; }
+        .btn-end:hover { background-color: #dc2626; transform: scale(1.05); }
+
+        /* 토스트 알림 위치 고정 */
+        .toast { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); background-color: #334155; border: 1px solid var(--success); color: white; padding: 12px 24px; border-radius: 30px; transition: top 0.3s ease-in-out; font-size: 14px; z-index: 9999; font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .toast.show { top: 40px; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div id="toast" class="toast">알림</div>
+
+    <audio id="audio-jiwoo" src="jiwoo.mp3" preload="auto"></audio>
+    <audio id="audio-boss" src="boss.mp3" preload="auto"></audio>
+    <audio id="audio-police" src="police.mp3" preload="auto"></audio>
+
+    <div id="loginScreen" class="screen active" style="justify-content: center;">
+        <div style="font-size: 36px; font-weight: 900; color: var(--primary); text-align: center; margin-bottom: 10px;">SafeWalk</div>
+        <div style="text-align: center; color: var(--text-sub); margin-bottom: 50px;">혼자 걷는 길, 더 이상 혼자가 아닙니다.</div>
+        <input type="email" class="input-field" placeholder="이메일 아이디">
+        <input type="password" class="input-field" placeholder="비밀번호">
+        <button class="primary-btn" style="margin-top: 10px;" onclick="doLogin()">시작하기</button>
+    </div>
+
+    <div id="homeScreen" class="screen">
+        <div id="premiumBanner" class="premium-banner" onclick="openPremiumModal()">
+            <div>
+                <div style="font-weight:bold; font-size:15px;">👑 프리미엄 업그레이드</div>
+                <div style="font-size:12px; margin-top:2px; opacity:0.9;">모든 광고 제거 및 즉시 연결</div>
+            </div>
+            <div style="font-weight:bold;">➔</div>
+        </div>
+
+        <h1 style="margin-top: 0;">상황별 설정</h1>
+        <div class="subtitle">가상의 페르소나와 실감나는 통화로 밤길을 지킵니다.</div>
+
+        <div class="card">
+            <h3 style="margin-top:0; font-size:15px; color: var(--text-sub);">캐릭터 선택</h3>
+            <div class="persona-list">
+                <div class="persona-btn selected" onclick="selectPersona('지우 오빠')">
+                    <div style="font-weight:bold;">지우 오빠 <span style="font-size:12px; color:var(--text-sub); font-weight:normal;">(보호자)</span></div>
+                    <span class="tag normal">평소용</span>
+                </div>
+                <div class="persona-btn" onclick="selectPersona('오건우 (보스)')">
+                    <div style="font-weight:bold;">오건우 (보스) <span style="font-size:12px; color:var(--text-sub); font-weight:normal;">(위협적인 목소리)</span></div>
+                    <span class="tag threat">위협용</span>
+                </div>
+                <div class="persona-btn" onclick="selectPersona('상황실 경찰')">
+                    <div style="font-weight:bold;">112 상황실 <span style="font-size:12px; color:var(--text-sub); font-weight:normal;">(긴급 대응)</span></div>
+                    <span class="tag emergency">긴급용</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+            <button class="primary-btn" onclick="startCall()" style="background-color: var(--success);">즉시 통화 연결 ⚡</button>
+        </div>
+
+        <div id="homeAd" class="ad-banner" onclick="openAdAndClose()">
+            <span style="font-size: 11px; color: var(--text-sub);">스폰서 광고</span>
+            <span style="font-size: 15px; font-weight: bold; color: white;">✨ 다음역: 은하계 <지금 바로 다운로드!></span>
+            <span style="font-size: 12px; color: var(--primary);">지금 확인하기 ➔</span>
+        </div>
+    </div>
+
+    <div id="callScreen" class="screen call-screen">
+        <div>
+            <div class="profile-pic" id="callProfileIcon">👦🏻</div>
+            <div class="caller-name" id="callName">지우 오빠</div>
+            <div class="call-time" id="callTimer">00:00</div>
+        </div>
+
+        <div class="ai-captions" id="captionArea">
+            <div class="caption-ai" style="color: var(--text-sub); text-align: center;">AI 맞춤형 케어 연결 중...</div>
+        </div>
+
+        <div class="call-controls-grid">
+            <div class="control-item">
+                <button class="control-btn" id="btnRecord" onclick="toggleRecord()">
+                    <div class="rec-dot" style="background-color: transparent; border: 2px solid white;"></div>
+                </button>
+                <span class="control-label">녹음</span>
+            </div>
+            <div class="control-item">
+                <button class="control-btn" id="btnMute" onclick="toggleBtn('btnMute')">🎤</button>
+                <span class="control-label">음소거</span>
+            </div>
+            <div class="control-item">
+                <button class="control-btn" id="btnSpeaker" onclick="toggleBtn('btnSpeaker')">🔊</button>
+                <span class="control-label">스피커</span>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+            <button class="control-btn btn-end" onclick="endCall()">📞</button>
+        </div>
+    </div>
+
+    <div id="adModal" class="modal-overlay">
+        <div class="modal-content" style="cursor: pointer;" onclick="openAdAndClose()">
+            <div style="font-size: 12px; color: var(--text-sub); margin-bottom: 10px;">Advertisement</div>
+            <div style="width:100%; height:180px; background-color:#334155; border-radius:12px; display:flex; align-items:center; justify-content:center; margin-bottom:16px; font-size:40px;">🍔</div>
+            <h3 style="margin-top:0;">배달의 민족, 지금 가입하면!</h3>
+            <p style="font-size: 14px; color: var(--text-sub); margin-bottom: 20px;">첫 주문 1만원 쿠폰 100% 지급</p>
+            <button class="primary-btn" style="background-color: #0ea5e9;">쿠폰 받기</button>
+            <button class="btn-skip-ad" id="adSkipBtn" onclick="event.stopPropagation(); closeAd()">3초 후 건너뛰기</button>
+        </div>
+    </div>
+
+    <div id="premiumModal" class="modal-overlay">
+        <div class="modal-content">
+            <div style="font-size: 40px; margin-bottom: 10px;">👑</div>
+            <h2 style="margin-top:0;">SafeWalk Premium</h2>
+            <ul style="text-align: left; color: var(--text-sub); font-size: 14px; line-height: 1.8; margin-bottom: 24px;">
+                <li>🚫 <b>광고 완벽 제거</b> (배너, 팝업 0개)</li>
+                <li>⚡ 긴급 상황 시 대기시간 없는 최우선 연결</li>
+                <li>🎙️ 10가지 프리미엄 보이스 추가 제공 (예정)</li>
+            </ul>
+            <button class="primary-btn" style="background: var(--premium); margin-bottom: 12px;" onclick="buyPremium()">₩4,900 / 월 결제하기</button>
+            <button class="btn-skip-ad" style="margin-top: 0; border: none;" onclick="closePremiumModal()">나중에 하기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let isPremium = false;
+    let currentPersona = '지우 오빠';
+    let timerInterval;
+    let seconds = 0;
+    let scenarioTimeouts = [];
+    let adSkipTimer;
+    let toastTimeout;
+    let isRecording = false;
+    let currentAudio = null;
+
+    // 🌟 추가된 함수: 광고를 새 탭에서 열고 기존 광고 모달은 닫음
+    function openAdAndClose() {
+        window.open('숭배.html', '_blank'); // 새 탭으로 열기
+        closeAd(); // 앱 화면에서는 광고 모달 닫기
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.innerText = msg;
+        toast.classList.add('show');
+        
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    function openPremiumModal() { document.getElementById('premiumModal').classList.add('active'); }
+    function closePremiumModal() { document.getElementById('premiumModal').classList.remove('active'); }
+
+    function buyPremium() {
+        isPremium = true; 
+        closePremiumModal();
+        document.getElementById('premiumBanner').style.display = 'none';
+        document.getElementById('homeAd').style.display = 'none';
+        showToast("👑 프리미엄 결제가 완료되었습니다! 광고가 제거되었습니다.");
+    }
+
+    function showInterstitialAd(callback) {
+        if (isPremium) { 
+            if(callback) callback();
+            return;
+        }
+        
+        const adModal = document.getElementById('adModal');
+        const skipBtn = document.getElementById('adSkipBtn');
+        adModal.classList.add('active');
+        
+        skipBtn.disabled = true;
+        skipBtn.style.color = '#475569';
+        let timeLeft = 3;
+        skipBtn.innerText = `${timeLeft}초 후 건너뛰기`;
+        
+        clearInterval(adSkipTimer);
+        adSkipTimer = setInterval(() => {
+            timeLeft--;
+            if (timeLeft <= 0) {
+                clearInterval(adSkipTimer);
+                skipBtn.disabled = false;
+                skipBtn.style.color = 'var(--text-sub)';
+                skipBtn.innerText = "건너뛰기 ➔";
+                skipBtn.onclick = (e) => { 
+                    e.stopPropagation(); 
+                    closeAd(callback); 
+                };
+            } else {
+                skipBtn.innerText = `${timeLeft}초 후 건너뛰기`;
+            }
+        }, 1000);
+    }
+
+    function closeAd(callback) {
+        document.getElementById('adModal').classList.remove('active');
+        if(typeof callback === "function") callback();
+    }
+
+    function switchScreen(fromId, toId) {
+        document.getElementById(fromId).classList.remove('active');
+        document.getElementById(toId).classList.add('active');
+    }
+
+    function doLogin() { switchScreen('loginScreen', 'homeScreen'); }
+
+    function selectPersona(name) {
+        currentPersona = name;
+        document.querySelectorAll('.persona-btn').forEach(btn => btn.classList.remove('selected'));
+        event.currentTarget.classList.add('selected');
+    }
+
+    function toggleBtn(btnId) {
+        document.getElementById(btnId).classList.toggle('active-state');
+    }
+
+    function toggleRecord() {
+        isRecording = !isRecording;
+        const btn = document.getElementById('btnRecord');
+        if (isRecording) {
+            btn.classList.add('recording');
+            btn.innerHTML = '<div class="rec-dot"></div>';
+            showToast("주변 음성 녹음이 시작되었습니다.");
+        } else {
+            btn.classList.remove('recording');
+            btn.innerHTML = '<div class="rec-dot" style="background-color: transparent; border: 2px solid white;"></div>';
+            showToast("녹음이 안전하게 저장되었습니다.");
+        }
+    }
+
+    function startCall() {
+        switchScreen('homeScreen', 'callScreen');
+        document.getElementById('callName').innerText = currentPersona;
+        
+        let icon = '👦🏻';
+        if (currentPersona.includes('보스')) icon = '🕵️‍♂️';
+        if (currentPersona.includes('경찰')) icon = '👮‍♂️';
+        document.getElementById('callProfileIcon').innerText = icon;
+
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+        }
+        
+        if (currentPersona === '지우 오빠') {
+            currentAudio = document.getElementById('audio-jiwoo');
+        } else if (currentPersona === '오건우 (보스)') {
+            currentAudio = document.getElementById('audio-boss');
+        } else if (currentPersona === '상황실 경찰') {
+            currentAudio = document.getElementById('audio-police');
+        }
+
+        if (currentAudio) {
+            currentAudio.play().catch(e => {
+                console.log("오디오 재생 에러:", e);
+                showToast("음성 파일을 찾을 수 없습니다. 파일명을 확인해주세요!");
+            });
+        }
+
+        isRecording = false;
+        document.getElementById('btnRecord').className = 'control-btn';
+        document.getElementById('btnRecord').innerHTML = '<div class="rec-dot" style="background-color: transparent; border: 2px solid white;"></div>';
+        document.getElementById('btnMute').classList.remove('active-state');
+        document.getElementById('btnSpeaker').classList.remove('active-state');
+
+        clearInterval(timerInterval);
+        seconds = 0;
+        document.getElementById('callTimer').innerText = '00:00';
+        timerInterval = setInterval(() => {
+            seconds++;
+            const mins = String(Math.floor(seconds / 60)).padStart(2, '0');
+            const secs = String(seconds % 60).padStart(2, '0');
+            document.getElementById('callTimer').innerText = `${mins}:${secs}`;
+        }, 1000);
+
+        simulateConversation(currentPersona);
+    }
+
+    function endCall() {
+        clearInterval(timerInterval);
+        scenarioTimeouts.forEach(clearTimeout); 
+        scenarioTimeouts = [];
+        
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio.currentTime = 0;
+        }
+        
+        showInterstitialAd(() => {
+            switchScreen('callScreen', 'homeScreen');
+        });
+    }
+
+    function simulateConversation(personaName) {
+        const captionArea = document.getElementById('captionArea');
+        captionArea.innerHTML = ''; 
+        let scenario = [];
+
+        if (personaName === '지우 오빠') {
+            scenario = [
+                { type: 'ai', text: '지우 오빠(AI): "여보세요? 어 자기야, 지금 어디쯤이야? 내가 그쪽으로 갈까?"', delay: 1000 },
+                { type: 'user', text: '"어 지금 편의점 지나서 골목길 들어섰어. 근데 좀 무섭네."', delay: 4500 },
+                { type: 'ai', text: '지우 오빠(AI): "아 진짜? 그 골목길 가로등 좀 어둡지 않아? 나 지금 옷 입고 나갈 테니까 계속 통화하자."', delay: 8000 },
+                { type: 'user', text: '"응응, 뒤에 누가 있는 건 아닌데 그냥 발소리가 신경 쓰여서..."', delay: 13000 },
+                { type: 'ai', text: '지우 오빠(AI): "괜찮아. 뒤돌아보지 말고 자연스럽게 걸어. 내가 5분 안에 그 앞 큰길로 갈게. 무슨 일 있으면 바로 소리치고 알았지?"', delay: 17000 },
+                { type: 'ai', text: '지우 오빠(AI): "지금 GPS 켜진 거 보이지? 지도로 자기 위치 보고 있어. 거의 다 와 가네."', delay: 23000 }
+            ];
+        } else if (personaName === '오건우 (보스)') {
+            scenario = [
+                { type: 'ai', text: '오건우(보스): "어, 나다. 어디쯤이냐? 아직 안 들어갔어?"', delay: 1000 },
+                { type: 'user', text: '"네 형님, 지금 집 앞 골목인데 누가 자꾸 따라오는 것 같아서요."', delay: 4500 },
+                { type: 'ai', text: '오건우(보스): "뭐? 어떤 새끼가. 당장 스피커폰 켜봐. 야! 거기 누구야!"', delay: 8500 },
+                { type: 'ai', text: '오건우(보스): "너 뒤에 있는 새끼 내 목소리 들리지? 좋은 말 할 때 갈 길 가라. 엉?"', delay: 12000 },
+                { type: 'user', text: '"형님 일단 계속 걷고 있어요..."', delay: 16000 },
+                { type: 'ai', text: '오건우(보스): "어 그래 계속 걸어. 내가 지금 애들 풀어서 그쪽으로 갈 테니까. 위치 전송해 놨지? 가만 안 둔다 진짜."', delay: 19000 }
+            ];
+        } else if (personaName === '상황실 경찰') {
+            scenario = [
+                { type: 'ai', text: '경찰(AI): "긴급신고 112입니다. 신고자분, 현재 위치 GPS로 확인되었습니다. 신림동 골목길 맞으십니까?"', delay: 1000 },
+                { type: 'user', text: '"네, 맞아요. 모르는 남자가 계속 쫓아오고 있어요. 너무 무서워요."', delay: 5000 },
+                { type: 'ai', text: '경찰(AI): "네, 안심하십시오. 가장 가까운 순찰차 2대 즉시 배차했습니다. 현재 1km 내에 있습니다."', delay: 9000 },
+                { type: 'ai', text: '경찰(AI): "신고자분, 절대 당황한 티 내지 마시고, 사람이 많은 밝은 곳이나 24시간 편의점 쪽으로 이동하십시오."', delay: 14000 },
+                { type: 'user', text: '"네.. 편의점 쪽으로 가볼게요.."', delay: 19000 },
+                { type: 'ai', text: '경찰(AI): "출동한 경찰관이 도착할 때까지 통화 끊지 마시고 제가 계속 상황 체크하겠습니다. 혹시 수상한 사람 인상착의 설명 가능하십니까?"', delay: 22000 }
+            ];
+        }
+
+        scenario.forEach(line => {
+            let timeout = setTimeout(() => {
+                const div = document.createElement('div');
+                div.className = line.type === 'ai' ? 'caption-ai' : 'caption-user';
+                div.innerText = line.text;
+                captionArea.appendChild(div);
+                captionArea.scrollTop = captionArea.scrollHeight; 
+            }, line.delay);
+            scenarioTimeouts.push(timeout);
+        });
+    }
+</script>
+
+</body>
+</html>
