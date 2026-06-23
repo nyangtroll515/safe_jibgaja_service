@@ -137,8 +137,9 @@
 <div class="app-container">
     <div id="toast" class="toast">알림</div>
 
+    <!-- 파일명을 전송해주신 파일명으로 변경했습니다. 오건우 파일명은 실제 파일명으로 수정해주세요! -->
     <audio id="audio-jiwoo" src="청기 녹음 인지우 수정본.m4a" preload="auto"></audio>
-    <audio id="audio-boss" src="boss.mp3" preload="auto"></audio>
+    <audio id="audio-boss" src="오건우_음성_파일명.m4a" preload="auto"></audio>
     <audio id="audio-police" src="police.mp3" preload="auto"></audio>
 
     <div id="loginScreen" class="screen active" style="justify-content: center;">
@@ -378,16 +379,23 @@
             currentAudio = document.getElementById('audio-police');
         }
 
-        // --- 수정된 부분: 0.8초(800ms) 뒤에 오디오 재생 ---
         if (currentAudio) {
-            setTimeout(() => {
+            if (currentPersona === '지우 오빠') {
+                // 지우 오빠는 0.8초(800ms) 뒤 재생
+                setTimeout(() => {
+                    currentAudio.play().catch(e => {
+                        console.log("오디오 재생 에러:", e);
+                        showToast("음성 파일을 찾을 수 없습니다. 파일명을 확인해주세요!");
+                    });
+                }, 800); 
+            } else {
+                // 오건우(보스) 및 다른 캐릭터는 딜레이 없이 즉시 재생
                 currentAudio.play().catch(e => {
                     console.log("오디오 재생 에러:", e);
                     showToast("음성 파일을 찾을 수 없습니다. 파일명을 확인해주세요!");
                 });
-            }, 800); 
+            }
         }
-        // ---------------------------------------------
 
         isRecording = false;
         document.getElementById('btnRecord').className = 'control-btn';
