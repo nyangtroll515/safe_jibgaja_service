@@ -137,7 +137,7 @@
 <div class="app-container">
     <div id="toast" class="toast">알림</div>
 
-    <audio id="audio-jiwoo" src="jiwoo.mp3" preload="auto"></audio>
+    <audio id="audio-jiwoo" src="청기 녹음 인지우 수정본.m4a" preload="auto"></audio>
     <audio id="audio-boss" src="boss.mp3" preload="auto"></audio>
     <audio id="audio-police" src="police.mp3" preload="auto"></audio>
 
@@ -378,12 +378,16 @@
             currentAudio = document.getElementById('audio-police');
         }
 
+        // --- 수정된 부분: 0.8초(800ms) 뒤에 오디오 재생 ---
         if (currentAudio) {
-            currentAudio.play().catch(e => {
-                console.log("오디오 재생 에러:", e);
-                showToast("음성 파일을 찾을 수 없습니다. 파일명을 확인해주세요!");
-            });
+            setTimeout(() => {
+                currentAudio.play().catch(e => {
+                    console.log("오디오 재생 에러:", e);
+                    showToast("음성 파일을 찾을 수 없습니다. 파일명을 확인해주세요!");
+                });
+            }, 800); 
         }
+        // ---------------------------------------------
 
         isRecording = false;
         document.getElementById('btnRecord').className = 'control-btn';
